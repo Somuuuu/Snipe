@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNIPE Shipment Tracker</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Lucide Icons (modern icons) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        :root {
+            --primary: #2563eb; /* Blue-600 */
+            --primary-dark: #1e40af; /* Blue-800 */
+        }
+        /* Custom scrollbar styling for better aesthetics */
+        body::-webkit-scrollbar { width: 8px; }
+        body::-webkit-scrollbar-track { background: #f1f5f9; /* Slate-100 */ }
+        body::-webkit-scrollbar-thumb { background: #94a3b8; /* Slate-400 */ border-radius: 4px; }
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Custom Timeline Step Styling */
+        .timeline-step {
+            @apply flex-1 flex flex-col items-center relative;
+        }
+        .timeline-line {
+            @apply absolute h-1 w-full top-5 -z-10;
+        }
+        .timeline-icon-wrapper {
+            @apply w-10 h-10 flex items-center justify-center rounded-full text-white shadow-md;
+        }
+        .timeline-label {
+            @apply text-sm mt-2 text-center font-medium;
+        }
+        
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#2563eb',
+                        'success-green': '#10b981',
+                        'warning-yellow': '#f59e0b',
+                        'danger-red': '#ef4444',
+                        'info-sky': '#0ea5e9',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- ---------------------------------------------------------------------- -->
+    <!-- PART 2 & 3: Dashboard UI and Modals -->
+    <!-- ---------------------------------------------------------------------- -->
+    <!-- Dashboard loads immediately without a hidden class -->
+    <div id="dashboard-view" class="container mx-auto p-4 md:p-8">
+        
+        <!-- Header with Title (Top Left) and Add Shipment Button (Top Right) -->
+        <header class="flex justify-between items-center bg-white shadow-lg rounded-xl p-4 mb-6 sticky top-0 z-10">
+            <h1 class="text-2xl md:text-3xl font-bold text-primary-blue flex items-center">
+                <i data-lucide="compass" class="w-6 h-6 mr-3"></i>
+                Shipment Tracking
+            </h1>
+            <div class="flex items-center space-x-3">
+                <!-- Add Shipment Button -->
+                <button type="button" 
+                        class="px-4 py-2 bg-success-green hover:bg-green-600 text-white text-sm font-semibold rounded-lg shadow-md transition duration-200 flex items-center"
+                        data-modal-target="addShipmentModal" data-modal-toggle="addShipmentModal">
+                    <i data-lucide="plus-circle" class="w-4 h-4 mr-2"></i>
+                    Add Shipment
+                </button>
+                <!-- Logout Button -->
+                <a href="/logout" 
+                        class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-semibold rounded-lg transition duration-200 flex items-center">
+                    <i data-lucide="log-out" class="w-4 h-4 mr-1"></i> Logout
+                </a>
+            </div>
+        </header>
+
+        <!-- Overview Cards (Static Mock Data) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Shipments -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-primary-blue transform hover:scale-[1.02] transition duration-300">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 uppercase">Total Shipments</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">{{ total }}</p>
+                    </div>
+                    <i data-lucide="package" class="w-8 h-8 text-primary-blue opacity-60"></i>
+                </div>
+            </div>
+            <!-- Shipments In Transit -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-info-sky transform hover:scale-[1.02] transition duration-300">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 uppercase">In Transit</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">{{ in_transit }}</p>
+                    </div>
+                    <i data-lucide="truck" class="w-8 h-8 text-info-sky opacity-60"></i>
+                </div>
+            </div>
+            <!-- Delivered Shipments -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-success-green transform hover:scale-[1.02] transition duration-300">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 uppercase">Delivered</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">{{ delivered }}</p>
+                    </div>
+                    <i data-lucide="check-circle" class="w-8 h-8 text-success-green opacity-60"></i>
+                </div>
+            </div>
+            <!-- Delayed Shipments -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-danger-red transform hover:scale-[1.02] transition duration-300">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 uppercase">Delayed</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">{{ delayed }}</p>
+                    </div>
+                    <i data-lucide="clock" class="w-8 h-8 text-danger-red opacity-60"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shipments Table (Main Feature) -->
+        <div class="bg-white shadow-xl rounded-xl p-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 space-y-3 md:space-y-0">
+                <h2 class="text-xl font-semibold text-gray-800">Recent Shipments</h2>
+                <!-- Search and Pagination Controls (Non-Functional Placeholders) -->
+                <div class="flex space-x-3 w-full md:w-auto">
+                    <input type="text" placeholder="Search by ID or Product (Static)" class="px-4 py-2 border border-gray-300 rounded-lg text-sm w-full md:w-64 focus:ring-primary-blue focus:border-primary-blue">
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 rounded-tl-xl">
+                                Shipment ID <i data-lucide="arrow-down-up" class="w-3 h-3 inline ml-1"></i>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">Last Updated</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tr-xl">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% if table %}
+                            {% for i in table %}
+                            <tr class="hover:bg-gray-50 transition duration-100">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-primary-blue">{{ i.id }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ i.product_name }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ i.source }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ i.destination }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-success-green/10 text-success-green">{{ i.status }}</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ i.ddate }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                    <a href="/shipments/{{ i.id }}" class="text-info-sky hover:text-blue-700">Details</a>
+                                    <a href="/shipments/{{ i.id }}?action=edit" class="text-primary-blue hover:text-blue-700">Edit</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">No shipments found.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination (Static Placeholder) -->
+            <div class="mt-4 flex justify-center">
+                <div class="flex items-center space-x-2 text-sm text-gray-600">
+                    <button class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50" disabled>Previous</button>
+                    <span class="px-3 py-1 bg-primary-blue text-white rounded-md">1</span>
+                    <span class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100">2</span>
+                    <span class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100">3</span>
+                    <button class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ---------------------------------------------------------------------- -->
+    <!-- MODAL: Shipment Details (Part 3) -->
+    <!-- ---------------------------------------------------------------------- -->
+    <div id="detailsModal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 {% if not (selected and not edit) %}hidden{% endif %} w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+        <div class="relative w-full max-w-4xl max-h-full">
+            <div class="relative bg-white rounded-xl shadow-2xl dark:bg-gray-700">
+                <div class="flex items-start justify-between p-5 border-b border-gray-100 dark:border-gray-600">
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
+                        Shipment Details - ID: <span class="text-primary-blue">{{ selected.id if selected else '' }}</span>
+                    </h3>
+                    <div class="flex items-center space-x-2 ml-auto">
+                        <a href="/" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium">Back</a>
+                        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white transition duration-150" data-modal-hide="detailsModal">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Modal Body -->
+                <div class="p-6 space-y-6">
+                    
+                    <!-- Horizontal Timeline (Matches Image) -->
+                    <div class="p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+                        <div class="flex justify-between relative">
+                            <!-- Step 1: Ordered (Completed) -->
+                            <div class="timeline-step">
+                                <div class="timeline-line left-0 right-1/2 bg-success-green"></div>
+                                <div class="timeline-icon-wrapper bg-success-green">
+                                    <i data-lucide="check" class="w-5 h-5"></i>
+                                </div>
+                                <div class="timeline-label text-success-green font-bold">Ordered</div>
+                            </div>
+                            
+                            <!-- Step 2: Packed (Completed) -->
+                            <div class="timeline-step">
+                                <div class="timeline-line left-0 right-0 bg-success-green"></div>
+                                <div class="timeline-icon-wrapper bg-success-green">
+                                    <i data-lucide="check" class="w-5 h-5"></i>
+                                </div>
+                                <div class="timeline-label text-success-green font-bold">Packed</div>
+                            </div>
+                            
+                            <!-- Step 3: Dispatched (In Progress / Current) -->
+                            <div class="timeline-step">
+                                <div class="timeline-line left-1/2 right-0 bg-primary-blue"></div>
+                                <div class="timeline-icon-wrapper bg-primary-blue">
+                                    <i data-lucide="truck" class="w-5 h-5"></i>
+                                </div>
+                                <div class="timeline-label text-primary-blue font-bold">Dispatched</div>
+                            </div>
+                            
+                            <!-- Step 4: Delivered (Pending) -->
+                            <div class="timeline-step">
+                                <div class="timeline-line left-1/2 right-0 bg-gray-300"></div>
+                                <div class="timeline-icon-wrapper bg-gray-300">
+                                    <i data-lucide="package-check" class="w-5 h-5"></i>
+                                </div>
+                                <div class="timeline-label text-gray-50">Delivered</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Two-Column Content (Image/ETA and Log Events) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        
+                        <!-- Left Card: Product Info, Status, ETA -->
+                        <div class="p-6 bg-white rounded-xl shadow-lg border border-gray-100 text-center space-y-4">
+                            <img src="https://placehold.co/200x150/f3f4f6/9ca3af?text=Product+Image" alt="Product Placeholder" class="mx-auto rounded-lg mb-4 shadow-md">
+                            
+                            <span class="inline-flex items-center px-4 py-1.5 text-sm font-bold bg-info-sky/20 text-info-sky rounded-full shadow-sm">
+                                {{ selected.status if selected else 'Unknown' }}
+                            </span>
+                            
+                            <p class="text-md text-gray-500">Estimated Delivery:</p>
+                            <p class="text-xl font-extrabold text-gray-800">{{ selected.ddate if selected else '' }}</p>
+
+                            <!-- Additional details for completeness -->
+                            <p class="text-sm text-gray-600 pt-2 border-t border-gray-100">Product: {{ selected.product_name if selected else '' }}</p>
+                        </div>
+
+                        <!-- Right Card: Last 5 Log Events -->
+                        <div class="p-6 bg-white rounded-xl shadow-lg border border-gray-100">
+                            <h4 class="text-xl font-semibold text-gray-800 mb-4">Last 5 Log Events</h4>
+                            
+                            <!-- Log Events List -->
+                            <ul class="space-y-3 text-sm text-gray-700">
+                                {% if selected and selected.log %}
+                                    {% if selected.log is string %}
+                                        <li class="p-2 border-b border-gray-100">{{ selected.log }}</li>
+                                    {% else %}
+                                        {% for entry in selected.log %}
+                                            <li class="p-2 border-b border-gray-100">{{ entry }}</li>
+                                        {% endfor %}
+                                    {% endif %}
+                                {% else %}
+                                    <li class="p-2 border-b border-gray-100"><span class="font-medium text-gray-900">No log events available.</span></li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ---------------------------------------------------------------------- -->
+    <!-- MODAL: Add Shipment (User Feature) -->
+    <!-- ---------------------------------------------------------------------- -->
+    <div id="addShipmentModal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+        <div class="relative w-full max-w-md max-h-full">
+            <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+                <div class="flex items-start justify-between p-4 border-b rounded-t bg-success-green/90">
+                    <h3 class="text-xl font-semibold text-white">
+                        Create New Shipment
+                    </h3>
+                    <button type="button" class="text-white hover:bg-success-green/80 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center" data-modal-hide="addShipmentModal">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <!-- Form is set up to submit to your Python backend API -->
+                <form action="/shipments/add" method="POST" class="p-6 space-y-4">
+                    <div>
+                        <label for="new_product" class="block mb-2 text-sm font-medium text-gray-900">Product Name</label>
+                        <input type="text" name="product_name" id="new_product" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-success-green focus:border-success-green block w-full p-2.5" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="new_source" class="block mb-2 text-sm font-medium text-gray-900">Source City</label>
+                            <input type="text" name="source" id="new_source" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-success-green focus:border-success-green block w-full p-2.5" required>
+                        </div>
+                        <div>
+                            <label for="new_destination" class="block mb-2 text-sm font-medium text-gray-900">Destination City</label>
+                            <input type="text" name="destination" id="new_destination" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-success-green focus:border-success-green block w-full p-2.5" required>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="new_status" class="block mb-2 text-sm font-medium text-gray-900">Initial Status</label>
+                        <select name="status" id="new_status" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-success-green focus:border-success-green block w-full p-2.5" required>
+                            <option value="Ordered">Ordered</option>
+                            <option value="Packed">Packed</option>
+                            <option value="In Transit">In Transit</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Delayed">Delayed</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="new_eta" class="block mb-2 text-sm font-medium text-gray-900">Estimated Delivery Date</label>
+                        <input type="date" name="eta" id="new_eta" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-success-green focus:border-success-green block w-full p-2.5" required>
+                    </div>
+                    <button type="submit" class="w-full text-white bg-success-green hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition duration-150">
+                        <i data-lucide="save" class="w-4 h-4 mr-2 inline"></i> Save New Shipment
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ---------------------------------------------------------------------- -->
+    <!-- MODAL: Update Shipment Details (New User Feature) -->
+    <!-- ---------------------------------------------------------------------- -->
+    <div id="updateShipmentModal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 {% if not (selected and edit) %}hidden{% endif %} w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+        <div class="relative w-full max-w-md max-h-full">
+            <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+                <div class="flex items-start justify-between p-4 border-b rounded-t bg-primary-blue/90">
+                    <h3 class="text-xl font-semibold text-white">
+                        Update Shipment: <span class="font-normal">{{ selected.id if selected else '' }}</span>
+                    </h3>
+                    <div class="flex items-center space-x-2 ml-auto">
+                        <a href="/" class="px-3 py-1 bg-primary-blue/20 hover:bg-primary-blue/30 text-white rounded-md text-sm font-medium">Cancel</a>
+                        <button type="button" class="text-white hover:bg-primary-blue/80 rounded-lg text-sm w-8 h-8 inline-flex justify-center items-center" data-modal-hide="updateShipmentModal">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- Form is set up to submit to your Python backend API -->
+                <form action="/shipments/update" method="POST" class="p-6 space-y-4">
+                    <input type="hidden" name="shipment_id" value="{{ selected.id if selected else '' }}">
+                    
+                    <div>
+                        <label for="update_status" class="block mb-2 text-sm font-medium text-gray-900">Update Status</label>
+                        <select name="status" id="update_status" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-blue focus:border-primary-blue block w-full p-2.5" required>
+                            <option value="Ordered" {% if selected and selected.status == 'Ordered' %}selected{% endif %}>Ordered</option>
+                            <option value="Packed" {% if selected and selected.status == 'Packed' %}selected{% endif %}>Packed</option>
+                            <option value="In Transit" {% if selected and selected.status == 'In Transit' %}selected{% endif %}>In Transit</option>
+                            <option value="Delivered" {% if selected and selected.status == 'Delivered' %}selected{% endif %}>Delivered</option>
+                            <option value="Delayed" {% if selected and selected.status == 'Delayed' %}selected{% endif %}>Delayed</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="update_log_event" class="block mb-2 text-sm font-medium text-gray-900">New Log Event</label>
+                        <input type="text" name="log_event" id="update_log_event" placeholder="e.g., Package inspected by customs" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-blue focus:border-primary-blue block w-full p-2.5">
+                    </div>
+                    <div>
+                        <label for="update_eta" class="block mb-2 text-sm font-medium text-gray-900">New Estimated Delivery Date</label>
+                        <input type="date" name="eta" id="update_eta" value="{{ selected.ddate if selected else '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-blue focus:border-primary-blue block w-full p-2.5" required>
+                    </div>
+                    
+                    <button type="submit" class="w-full text-white bg-primary-blue hover:bg-primary-dark font-medium rounded-lg text-sm px-5 py-2.5 text-center transition duration-150">
+                        <i data-lucide="cloud-lightning" class="w-4 h-4 mr-2 inline"></i> Apply Update
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ---------------------------------------------------------------------- -->
+    <!-- Libraries and Initialization (Needed for Modals and Icons) -->
+    <!-- ---------------------------------------------------------------------- -->
+    <!-- Flowbite for Tailwind Modals (Minimal JS needed to make modals appear/hide) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.6.5/flowbite.min.js"></script>
+    <script>
+        // Initialize Lucide Icons after content load
+        lucide.createIcons();
+    </script>
+</body>
+</html>

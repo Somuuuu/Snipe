@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNIPE Login</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary: #2563eb; /* Blue-600 */
+            --primary-dark: #1e40af; /* Blue-800 */
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#2563eb',
+                        'info-sky': '#0ea5e9',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- PART 1: Authentication UI (Login Page) -->
+    <div id="login-view" class="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-blue to-info-sky p-4">
+        <div class="w-full max-w-sm bg-white rounded-xl shadow-2xl p-6 md:p-8">
+            <h1 class="text-center text-4xl font-bold text-primary-blue mb-2">SNIPE</h1>
+            <p class="text-center text-gray-500 mb-6">Login</p>
+            
+            <!-- Form action posts to the server login endpoint -->
+            <form action="/login" method="POST">
+                <div class="mb-5">
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="email" name="email" value="user@snipe.com" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue transition duration-150" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="password" name="password" value="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue transition duration-150" required>
+                </div>
+                <button type="submit" class="w-full bg-primary-blue hover:bg-primary-dark text-white font-semibold py-2.5 rounded-lg shadow-md transition duration-200">
+                    LOGIN
+                </button>
+            </form>
+            {% if error %}
+            <p class="mt-4 text-center text-sm text-red-600">{{ error }}</p>
+            {% endif %}
+            <p class="mt-4 text-center text-xs text-gray-400">Just click on login.</p>
+        </div>
+    </div>
+</body>
+</html>
