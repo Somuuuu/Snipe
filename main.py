@@ -23,4 +23,4 @@ def home(request: Request):
     delivered = sum(1 for t in table if (t.get('status') if isinstance(t, dict) else getattr(t, 'status', None)) == 'Delivered') if table else 0
     delayed = sum(1 for t in table if (t.get('status') if isinstance(t, dict) else getattr(t, 'status', None)) == 'Delayed') if table else 0
 
-    return templates.TemplateResponse("index.html", {"request": request, "table": table, "total": total, "in_transit": in_transit, "delivered": delivered, "delayed": delayed})
+    return templates.TemplateResponse("login.html", {"request": request, "table": table, "total": total, "in_transit": in_transit, "delivered": delivered, "delayed": delayed})
